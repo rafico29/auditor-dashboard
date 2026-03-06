@@ -286,7 +286,12 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🔍 Filtros de búsqueda")
     anios = sorted(df["anio"].unique())
-    periodo = st.select_slider("📅 Período", options=anios, value=(min(anios), max(anios)))
+    col_anio1, col_anio2 = st.columns(2)
+    with col_anio1:
+        anio_inicio = st.selectbox("📅 Año Inicio", anios, index=0)
+    with col_anio2:
+        anio_fin = st.selectbox("📅 Año Fin", anios, index=len(anios)-1)
+    periodo = (anio_inicio, anio_fin)
     depts = ["Todos"] + sorted(df["departamento"].unique().tolist())
     dept_sel = st.selectbox("📍 Departamento", depts, index=0)
     mods = ["Todas"] + sorted(df["modalidad"].unique().tolist())
