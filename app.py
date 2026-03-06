@@ -364,18 +364,34 @@ if page == "📊 Dashboard General":
     with c2:
         st.markdown(f'<div class="kpi-card warning"><div class="kpi-label">Alertas Generadas</div><div class="kpi-value">{total_alertas:,}</div><div class="kpi-delta">{total_alertas/max(total_c,1)*100:.1f}% del total</div></div>', unsafe_allow_html=True)
     with c3:
-        # Determinar símbolo y texto según la diferencia
-        if diferencia_pp > 0:
+        # Determinar símbolo, texto y colores según la diferencia con promedio nacional
+        if diferencia_pp > 3:  # Muy por encima (Rojo intenso - PELIGRO)
             simbolo = "▲"
             texto_comparacion = f"{abs(diferencia_pp):.1f}pp por encima del promedio nacional"
-        elif diferencia_pp < 0:
+            color_card = "alert"  # border rojo
+            color_valor = "#c0392b"  # rojo oscuro
+        elif diferencia_pp > 0:  # Ligeramente arriba (Naranja/Amarillo - PRECAUCIÓN)
+            simbolo = "▲"
+            texto_comparacion = f"{abs(diferencia_pp):.1f}pp por encima del promedio nacional"
+            color_card = "warning"  # border amarillo
+            color_valor = "#e67e22"  # naranja
+        elif diferencia_pp < -3:  # Muy por debajo (Verde - BIEN)
             simbolo = "▼"
             texto_comparacion = f"{abs(diferencia_pp):.1f}pp por debajo del promedio nacional"
-        else:
+            color_card = "success"  # border verde
+            color_valor = "#27ae60"  # verde
+        elif diferencia_pp < 0:  # Ligeramente abajo (Amarillo claro - ACEPTABLE)
+            simbolo = "▼"
+            texto_comparacion = f"{abs(diferencia_pp):.1f}pp por debajo del promedio nacional"
+            color_card = ""  # border azul normal
+            color_valor = "#f39c12"  # amarillo
+        else:  # Igual al promedio (Neutral)
             simbolo = "="
             texto_comparacion = "Igual al promedio nacional"
+            color_card = "info"  # border azul
+            color_valor = "#3498db"  # azul
 
-        st.markdown(f'<div class="kpi-card alert"><div class="kpi-label">Riesgo Alto</div><div class="kpi-value alert">{r_alto} {simbolo}</div><div class="kpi-delta">{texto_comparacion}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card {color_card}"><div class="kpi-label">Riesgo Alto</div><div class="kpi-value" style="color:{color_valor};">{r_alto} {simbolo}</div><div class="kpi-delta">{texto_comparacion}</div></div>', unsafe_allow_html=True)
     with c4:
         st.markdown(f'<div class="kpi-card info"><div class="kpi-label">Contratación Directa</div><div class="kpi-value info">{pct_directa:.1f}%</div><div class="kpi-delta">Del total analizado</div></div>', unsafe_allow_html=True)
     with c5:
