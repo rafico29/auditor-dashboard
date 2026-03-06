@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Streamlit (mantener config.toml para deployment)
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+!.streamlit/config.toml
+
+# Backups
+*_backup.py
+*_original.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
