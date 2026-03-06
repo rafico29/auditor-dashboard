@@ -293,6 +293,8 @@ with st.sidebar:
     mod_sel = st.selectbox("📋 Modalidad", mods, index=0)
     niveles = ["Todos", "Alto", "Medio", "Bajo"]
     nivel_sel = st.selectbox("⚠️ Nivel de Riesgo", niveles, index=0)
+    calidades = ["Todas", "Alta", "Media", "Baja"]
+    calidad_sel = st.selectbox("📊 Calidad de Datos", calidades, index=0)
 
     st.markdown("---")
     st.markdown("### 📊 Resumen Rápido")
@@ -313,6 +315,13 @@ if mod_sel != "Todas":
     df_f = df_f[df_f["modalidad"] == mod_sel]
 if nivel_sel != "Todos":
     df_f = df_f[df_f["nivel_riesgo"] == nivel_sel]
+if calidad_sel != "Todas":
+    if calidad_sel == "Alta":
+        df_f = df_f[df_f["calidad_datos"] >= 75]
+    elif calidad_sel == "Media":
+        df_f = df_f[(df_f["calidad_datos"] >= 50) & (df_f["calidad_datos"] < 75)]
+    elif calidad_sel == "Baja":
+        df_f = df_f[df_f["calidad_datos"] < 50]
 
 # Calcular métricas generales
 total_c = len(df_f)
@@ -320,6 +329,11 @@ total_alertas = len(df_f[df_f["score_riesgo"] >= 40])
 r_alto = len(df_f[df_f["nivel_riesgo"] == "Alto"])
 pct_directa = (len(df_f[df_f["modalidad"] == "Contratación Directa"]) / max(total_c, 1) * 100)
 ahorro = df_f[df_f["nivel_riesgo"] == "Alto"]["valor"].sum() * 0.12
+
+# Calcular comparación con promedio nacional
+pct_alto_filtrado = (r_alto / max(total_c, 1)) * 100
+pct_alto_nacional = (len(df[df["nivel_riesgo"] == "Alto"]) / len(df)) * 100
+diferencia_pp = pct_alto_filtrado - pct_alto_nacional
 
 # ─────────────────────────────────────────────
 # HEADER
@@ -345,7 +359,18 @@ if page == "📊 Dashboard General":
     with c2:
         st.markdown(f'<div class="kpi-card warning"><div class="kpi-label">Alertas Generadas</div><div class="kpi-value">{total_alertas:,}</div><div class="kpi-delta">{total_alertas/max(total_c,1)*100:.1f}% del total</div></div>', unsafe_allow_html=True)
     with c3:
-        st.markdown(f'<div class="kpi-card alert"><div class="kpi-label">Riesgo Alto</div><div class="kpi-value alert">{r_alto} ▲</div><div class="kpi-delta">Revisión prioritaria</div></div>', unsafe_allow_html=True)
+        # Determinar símbolo y texto según la diferencia
+        if diferencia_pp > 0:
+            simbolo = "▲"
+            texto_comparacion = f"{abs(diferencia_pp):.1f}pp por encima del promedio nacional"
+        elif diferencia_pp < 0:
+            simbolo = "▼"
+            texto_comparacion = f"{abs(diferencia_pp):.1f}pp por debajo del promedio nacional"
+        else:
+            simbolo = "="
+            texto_comparacion = "Igual al promedio nacional"
+
+        st.markdown(f'<div class="kpi-card alert"><div class="kpi-label">Riesgo Alto</div><div class="kpi-value alert">{r_alto} {simbolo}</div><div class="kpi-delta">{texto_comparacion}</div></div>', unsafe_allow_html=True)
     with c4:
         st.markdown(f'<div class="kpi-card info"><div class="kpi-label">Contratación Directa</div><div class="kpi-value info">{pct_directa:.1f}%</div><div class="kpi-delta">Del total analizado</div></div>', unsafe_allow_html=True)
     with c5:
@@ -394,6 +419,50 @@ if page == "📊 Dashboard General":
         hm["periodo"] = hm["mes"] + " " + hm["anio"].astype(str)
 
         fig_t = go.Figure()
+
+        # Sombreados contextuales para períodos críticos
+        for anio in am["anio"].unique():
+            # Fin de vigencia fiscal (Noviembre-Diciembre)
+            nov_idx = am[(am["anio"]==anio) & (am["mes_num"]==11)]
+            dic_idx = am[(am["anio"]==anio) & (am["mes_num"]==12)]
+            if not nov_idx.empty:
+                x0 = nov_idx["periodo"].values[0]
+                x1 = dic_idx["periodo"].values[0] if not dic_idx.empty else nov_idx["periodo"].values[0]
+                fig_t.add_vrect(
+                    x0=x0, x1=x1,
+                    fillcolor="rgba(241,196,15,0.15)", line_width=0,
+                    annotation_text="Cierre fiscal" if anio == am["anio"].min() else "",
+                    annotation_position="top left",
+                    annotation=dict(font=dict(size=9, color="#b7950b")),
+                )
+
+            # Período pre-electoral 2023 (Agosto-Octubre)
+            if anio == 2023:
+                oct_idx = am[(am["anio"]==2023) & (am["mes_num"].isin([8,9,10]))]
+                if not oct_idx.empty:
+                    fig_t.add_vrect(
+                        x0=oct_idx["periodo"].values[0],
+                        x1=oct_idx["periodo"].values[-1],
+                        fillcolor="rgba(231,76,60,0.1)", line_width=0,
+                        annotation_text="Pre-electoral",
+                        annotation_position="top left",
+                        annotation=dict(font=dict(size=9, color="#c0392b")),
+                    )
+
+            # Período electoral 2024 (Mayo-Junio)
+            if anio == 2024:
+                may_idx = am[(am["anio"]==2024) & (am["mes_num"].isin([5,6]))]
+                if not may_idx.empty:
+                    fig_t.add_vrect(
+                        x0=may_idx["periodo"].values[0],
+                        x1=may_idx["periodo"].values[-1],
+                        fillcolor="rgba(155,89,182,0.1)", line_width=0,
+                        annotation_text="Electoral",
+                        annotation_position="top left",
+                        annotation=dict(font=dict(size=9, color="#8e44ad")),
+                    )
+
+        # Líneas de datos
         fig_t.add_trace(go.Scatter(x=am["periodo"], y=am["alertas"], mode="lines+markers", name="Total Alertas", line=dict(color="#2c4a7c", width=2.5), marker=dict(size=7), fill="tozeroy", fillcolor="rgba(44,74,124,0.1)"))
         fig_t.add_trace(go.Scatter(x=hm["periodo"], y=hm["alto"], mode="lines+markers", name="Riesgo Alto", line=dict(color="#e74c3c", width=2, dash="dot"), marker=dict(size=6, symbol="diamond")))
 
